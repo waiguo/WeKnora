@@ -36,6 +36,10 @@ jobs:
       - name: Install NSIS
         run: choco install nsis -y
 
+      - name: Add NSIS to PATH
+        shell: pwsh
+        run: echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Warm module cache
         shell: bash
         run: go mod download all
@@ -68,9 +72,22 @@ jobs:
           rm -f _prebuild_tmp.exe
           wails build -clean -skipbindings -tags "sqlite_fts5" -platform windows/amd64 -nsis -ldflags="${LDFLAGS}" -o "WeKnora Lite"
 
-      - name: Upload installer
+      - name: Collect build outputs
+        shell: bash
+        run: |
+          BIN="cmd/desktop/build/bin"
+          OUT="dist"
+          mkdir -p "$OUT/config"
+          # wails writes the bare app name (no .exe extension) at bin root.
+          cp "$BIN/WeKnora Lite" "$OUT/WeKnoraLite.exe"
+          cp -r config/* "$OUT/config/" 2>/dev/null || true
+          # NSIS installer if makensis was found (wails writes it next to the exe).
+          find "$BIN" -iname "*installer*.exe" -exec cp {} "$OUT/" \; 2>/dev/null || true
+          ls -lR "$OUT"
+
+      - name: Upload app
         uses: actions/upload-artifact@v7
         with:
           name: weknora-desktop-windows
-          path: cmd/desktop/build/bin/*.exe
+          path: dist/**
           retention-days: 30
