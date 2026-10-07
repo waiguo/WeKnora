@@ -36,6 +36,21 @@ jobs:
       - name: Install NSIS
         run: choco install nsis -y
 
+      - name: Warm module cache
+        shell: bash
+        run: go mod download all
+
+      - name: Provide sqlite3 headers for sqlite-vec cgo
+        shell: bash
+        run: |
+          SRC="$(cygpath -u "$(go env GOMODCACHE)")/github.com/mattn/go-sqlite3@v1.14.24"
+          DST="$GITHUB_WORKSPACE/.cgo-include"
+          mkdir -p "$DST"
+          cp "$SRC/sqlite3-binding.h" "$DST/sqlite3.h"
+          cp "$SRC/sqlite3ext.h" "$DST/sqlite3ext.h"
+          ls -l "$DST"
+          echo "CGO_INC=$(cygpath -m "$DST")" >> "$GITHUB_ENV"
+
       - name: Build Windows desktop app
         shell: bash
         run: |
@@ -43,7 +58,7 @@ jobs:
           export GOLANG_PROTOBUF_REGISTRATION_CONFLICT=warn
           eval "$(./scripts/get_version.sh env)"
           LDFLAGS="$(./scripts/get_version.sh ldflags) -X 'google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn'"
-          export CGO_CFLAGS="-Wno-deprecated-declarations"
+          export CGO_CFLAGS="-Wno-deprecated-declarations -I${CGO_INC}"
           bash ./scripts/check-license-bundle.sh
           # Wails binding generation executes package inits; internal/types init
           # calls gojieba.NewJieba() (CGO) which AVs on the runner. Bindings are
