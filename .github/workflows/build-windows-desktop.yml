@@ -45,8 +45,13 @@ jobs:
           LDFLAGS="$(./scripts/get_version.sh ldflags) -X 'google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn'"
           export CGO_CFLAGS="-Wno-deprecated-declarations"
           bash ./scripts/check-license-bundle.sh
+          # Wails binding generation executes package inits; internal/types init
+          # calls gojieba.NewJieba() (CGO) which AVs on the runner. Bindings are
+          # committed under frontend/src/wailsjs, so skip regenerating them.
           cd cmd/desktop
-          wails build -clean -tags "sqlite_fts5" -platform windows/amd64 -nsis -ldflags="${LDFLAGS}" -o "WeKnora Lite"
+          go build -p 1 -buildvcs=false -tags "desktop,sqlite_fts5,production" -o _prebuild_tmp.exe . || true
+          rm -f _prebuild_tmp.exe
+          wails build -clean -skipbindings -tags "sqlite_fts5" -platform windows/amd64 -nsis -ldflags="${LDFLAGS}" -o "WeKnora Lite"
 
       - name: Upload installer
         uses: actions/upload-artifact@v7
