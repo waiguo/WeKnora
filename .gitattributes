@@ -18,3 +18,7 @@ cli/acceptance/testdata/**/*.json text eol=lf
 
 # Unified diffs use a space to mark empty context lines.
 patches/browserskill/*.patch whitespace=-blank-at-eol
+
+# License source manifest is read by a bash script with a strict hex regex;
+# CRLF from Windows checkouts breaks it.
+licenses/sources/*.tsv text eol=lf
